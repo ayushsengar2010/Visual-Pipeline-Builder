@@ -1,48 +1,90 @@
 # Visual Pipeline Builder
 
-A visual node-based workflow editor for creating and validating DAG (Directed Acyclic Graph) pipelines with LLM integration support.
+Visual Pipeline Builder is a node-based product for designing and analyzing AI/automation workflows. Users visually connect nodes (Input, Text, LLM, Output), submit the graph to a backend, and receive structural intelligence about correctness and quality.
 
-## Features
+## Problem Statement
 
-- 🎨 **Visual Pipeline Editor** - Drag-and-drop interface using ReactFlow
-- 🔗 **Node Types** - Input, Output, LLM, and Text nodes
-- ✅ **DAG Validation** - Ensures valid directed acyclic graph structure
-- 🚀 **FastAPI Backend** - High-performance Python backend
-- ⚛️ **React Frontend** - Modern, responsive UI
+Designing AI workflows quickly becomes hard when pipelines are large, disconnected, or cyclic. This project solves that by combining:
+
+- a visual low-code editor for composing pipelines
+- a backend analysis engine for graph correctness and quality signals
+- recommendation output that helps users improve workflow design
+
+## Core Features
+
+- 🎨 Drag-and-drop workflow builder (ReactFlow)
+- 🧩 Multiple node types: Input, Text, LLM, Output
+- ✅ Graph validation with DAG/cycle detection
+- 🧠 Intelligent analysis report with recommendations
+- 📊 Structural metrics: components, depth, complexity score
+- 🐳 Containerized run support using Docker Compose
+
+## Architecture
+
+### High-Level Components
+
+- **Frontend (React + Zustand + ReactFlow)**
+  - Node palette and drag-drop canvas
+  - Pipeline submission and analysis rendering
+- **Backend (FastAPI)**
+  - Graph modeling and validation APIs
+  - Analysis engine (cycle path, connectivity, reachability, scoring)
+
+### Data Flow
+
+User builds graph on canvas → Frontend serializes nodes/edges → `POST /pipelines/analyze` → Backend validates and computes insights → Frontend shows report and recommendations.
+
+## API
+
+### `POST /pipelines/parse`
+Backward-compatible endpoint that now returns full analysis payload.
+
+### `POST /pipelines/analyze`
+Primary analysis endpoint returning:
+
+- `num_nodes`, `num_edges`, `is_dag`
+- `cycle_path`
+- `root_nodes`, `leaf_nodes`, `isolated_nodes`
+- `disconnected_components`
+- `input_nodes`, `output_nodes`, `unreachable_output_nodes`
+- `max_depth`, `topological_order`, `complexity_score`
+- `recommendations`
 
 ## Project Structure
 
 ```
 ├── backend/
-│   ├── main.py           # FastAPI server with DAG validation
-│   └── requirements.txt  # Python dependencies
+│   ├── main.py
+│   ├── test_main.py
+│   ├── requirements.txt
+│   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── nodes/       # Custom node components
-│   │   ├── App.js       # Main React component
-│   │   ├── ui.js        # ReactFlow pipeline UI
-│   │   ├── toolbar.js   # Node palette
-│   │   └── submit.js    # Pipeline submission
-│   └── package.json     # Node dependencies
-└── .gitignore
+│   │   ├── nodes/
+│   │   ├── submit.js
+│   │   ├── ui.js
+│   │   ├── toolbar.js
+│   │   └── App.js
+│   ├── package.json
+│   └── Dockerfile
+└── docker-compose.yml
 ```
 
-## Getting Started
+## Local Setup
 
-### Backend Setup
+### 1) Backend
 
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate  # On Windows
-# source venv/bin/activate  # On Linux/Mac
+venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-The backend will be available at `http://localhost:8000`
+Backend: `http://localhost:8000`
 
-### Frontend Setup
+### 2) Frontend
 
 ```bash
 cd frontend
@@ -50,37 +92,52 @@ npm install
 npm start
 ```
 
-The frontend will be available at `http://localhost:3000`
+Frontend: `http://localhost:3000`
 
-## API Endpoints
+> Note: This project uses Create React App scripts (`npm start`), not `npm run dev`.
 
-### POST `/pipelines/parse`
+## Tests
 
-Validates a pipeline and checks if it forms a valid DAG.
+Run backend tests:
 
-**Request Body:**
-```json
-{
-  "nodes": [...],
-  "edges": [...]
-}
+```bash
+cd backend
+pytest -q
 ```
 
-**Response:**
-```json
-{
-  "num_nodes": 4,
-  "num_edges": 3,
-  "is_dag": true
-}
+## Docker Deployment
+
+From repo root:
+
+```bash
+docker compose up --build
 ```
 
-## Technologies Used
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
 
-- **Backend:** FastAPI, Python 3.x, Uvicorn
-- **Frontend:** React, ReactFlow, Zustand
-- **Styling:** CSS
+## Technology Stack
+
+- Backend: FastAPI, Pydantic, Uvicorn
+- Frontend: React, ReactFlow, Zustand
+- Testing: Pytest
+- Deployment: Docker, Docker Compose
+
+## Submission Notes (Internship Deck Support)
+
+This repository demonstrates:
+
+- modular architecture (frontend + backend separation)
+- intelligent workflow analysis and recommendations
+- API-driven integration between UI and analysis engine
+- local and containerized execution paths
+
+For final submission, include:
+
+1. Architecture diagram (components + data flow)
+2. Demo video showing pipeline creation and analysis output
+3. Your role, trade-offs, and future scaling roadmap
 
 ## License
 
-This project is provided as-is for educational and assessment purposes.
+Provided as-is for educational and evaluation use.

@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useStore } from './store';
 import { shallow } from 'zustand/shallow';
 
@@ -8,8 +9,17 @@ const selector = (state) => ({
 
 export const SubmitButton = () => {
     const { nodes, edges } = useStore(selector, shallow);
+    const [analysisResult, setAnalysisResult] = useState(null);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const canSubmit = useMemo(() => nodes.length > 0, [nodes.length]);
 
     const handleSubmit = async () => {
+        setErrorMessage('');
+        setAnalysisResult(null);
+        setIsSubmitting(true);
+
         try {
             const pipelineData = {
                 nodes: nodes.map(node => ({
@@ -40,40 +50,92 @@ export const SubmitButton = () => {
             }
 
             const result = await response.json();
-            const message = `Pipeline Analysis:\n\n` +
-                          `Number of Nodes: ${result.num_nodes}\n` +
-                          `Number of Edges: ${result.num_edges}\n` +
-                          `Is DAG (Directed Acyclic Graph): ${result.is_dag ? 'Yes ✓' : 'No ✗'}`;
-            
-            alert(message);
+            setAnalysisResult(result);
 
         } catch (error) {
             console.error('Error submitting pipeline:', error);
-            alert(`Error submitting pipeline: ${error.message}\n\nPlease make sure the backend server is running on http://localhost:8000`);
+            setErrorMessage(`Error submitting pipeline: ${error.message}. Make sure backend is running on http://localhost:8000`);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     return (
-        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px'}}>
-            <button 
-                type="submit" 
-                onClick={handleSubmit}
-                style={{
-                    padding: '10px 30px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#45a049'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#4CAF50'}
-            >
-                Submit Pipeline
-            </button>
+        <div style={{ margin: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button
+                    type="submit"
+                    onClick={handleSubmit}
+                    disabled={!canSubmit || isSubmitting}
+                    style={{
+                        padding: '10px 30px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: canSubmit && !isSubmitting ? '#4CAF50' : '#9bbd9d',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: canSubmit && !isSubmitting ? 'pointer' : 'not-allowed',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}
+                >
+                    {isSubmitting ? 'Analyzing Pipeline...' : 'Analyze Pipeline'}
+                </button>
+            </div>
+
+            {errorMessage && (
+                <div style={{
+                    margin: '16px auto 0',
+                    maxWidth: '900px',
+                    border: '1px solid #ffb3b3',
+                    background: '#fff4f4',
+                    color: '#9f1d1d',
+                    padding: '12px',
+                    borderRadius: '6px'
+                }}>
+                    {errorMessage}
+                </div>
+            )}
+
+            {analysisResult && (
+                <div style={{
+                    margin: '16px auto 0',
+                    maxWidth: '900px',
+                    border: '1px solid #d7dbe3',
+                    background: '#ffffff',
+                    padding: '16px',
+                    borderRadius: '8px'
+                }}>
+                    <h3 style={{ marginTop: 0, marginBottom: '12px' }}>Pipeline Analysis Report</h3>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '12px' }}>
+                        <div><strong>Nodes:</strong> {analysisResult.num_nodes}</div>
+                        <div><strong>Edges:</strong> {analysisResult.num_edges}</div>
+                        <div><strong>Is DAG:</strong> {analysisResult.is_dag ? 'Yes ✓' : 'No ✗'}</div>
+                        <div><strong>Components:</strong> {analysisResult.disconnected_components}</div>
+                        <div><strong>Max Depth:</strong> {analysisResult.max_depth}</div>
+                        <div><strong>Complexity Score:</strong> {analysisResult.complexity_score}</div>
+                    </div>
+
+                    {!analysisResult.is_dag && analysisResult.cycle_path?.length > 0 && (
+                        <p style={{ marginTop: 0 }}><strong>Cycle Path:</strong> {analysisResult.cycle_path.join(' -> ')}</p>
+                    )}
+
+                    <p><strong>Root Nodes:</strong> {analysisResult.root_nodes?.join(', ') || 'None'}</p>
+                    <p><strong>Leaf Nodes:</strong> {analysisResult.leaf_nodes?.join(', ') || 'None'}</p>
+                    <p><strong>Isolated Nodes:</strong> {analysisResult.isolated_nodes?.join(', ') || 'None'}</p>
+                    <p><strong>Unreachable Outputs:</strong> {analysisResult.unreachable_output_nodes?.join(', ') || 'None'}</p>
+
+                    <div>
+                        <strong>Recommendations:</strong>
+                        <ul>
+                            {(analysisResult.recommendations || []).map((recommendation) => (
+                                <li key={recommendation}>{recommendation}</li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
